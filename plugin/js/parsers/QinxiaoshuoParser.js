@@ -18,11 +18,11 @@ class QinxiaoshuoParser extends Parser{
     }
 
     extractTitleImpl(dom) {
-        return dom.querySelector("div.book_name").textContent;
+        return dom.querySelector("div.right > h1").textContent;
     }
 
     extractAuthor(dom) {
-        let authorLabel = dom.querySelector("div.info a");
+        let authorLabel = dom.querySelector("div.info_item a");
         return (authorLabel === null) ? super.extractAuthor(dom) : authorLabel.textContent;
     }
 
@@ -31,7 +31,7 @@ class QinxiaoshuoParser extends Parser{
     }
 
     findCoverImageUrl(dom) {
-        return util.getFirstImgSrc(dom, "div.book_info");
+        return util.getFirstImgSrc(dom, "div.show_info");
     }
 
     fetchChapter(url) {
@@ -59,12 +59,13 @@ class QinxiaoshuoParser extends Parser{
     }
 
     static urlOfNextPageOfChapter(dom, fetchedUrls) {
-        let links = [...dom.querySelectorAll("div.buttons a")]
+        let links = [...dom.querySelectorAll("a.qxs_btn")]
             .filter(link => QinxiaoshuoParser.isPossibleNextPage(link, fetchedUrls));
         return (0 < links.length) ? links[0].href : null;
     }
 
     static isPossibleNextPage(link, fetchedUrls) {
+        if (!link.href) return false;
         let url = new URL(link.href);
         let xiaoshuo = url.searchParams.get("xiaoshuo");
         return (xiaoshuo !== null) && !fetchedUrls.has(link.href);

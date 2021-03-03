@@ -1,35 +1,61 @@
-
+/*
+  Template to use to create a new parser
+*/
 "use strict";
 
-parserFactory.register("www.esjzone.cc", () => new EsjParser());
+parserFactory.register("gitlab.com", () => new GitlabParser());
 
-class EsjParser extends Parser{
+class GitlabParser extends Parser{
     constructor() {
         super();
     }
 
+    // returns promise with the URLs of the chapters to fetch
+    // promise is used because may need to fetch the list of URLs from internet
+    /*
     async getChapterUrls(dom) {
-        let menu = dom.querySelector("#chapterList");
+        // Most common implementation is to find element holding the hyperlinks to
+        // the web pages holding the chapters.  Then call util.hyperlinksToChapterList()
+        // to convert the links into a list of URLs the parser will collect.
+        let menu = dom.querySelector("div.su-tabs-panes");
         return util.hyperlinksToChapterList(menu);
     }
+    */
 
+    // returns the element holding the story content in a chapter
     findContent(dom) {
-        let tiebaContent = dom.querySelector("#j_p_postlist")
-        if (typeof(tiebaContent) != 'undefined' && tiebaContent !== null) {
-            return tiebaContent;
-        }
-
-        return dom.querySelector(".forum-content");
+        return dom.querySelector("#gitlab");
     }
 
+    // title of the story  (not to be confused with title of each chapter)
+    /*
     extractTitleImpl(dom) {
-        return dom.querySelector("h2");
+        // typical implementation is find node with the Title and return name from title
+        // NOTE. Can return Title as a string, or an  HTML element
+        return dom.querySelector("h1");
     }
+    */
 
+    // author of the story
+    // Optional, if not provided, will default to "<unknown>"
+    /*
     extractAuthor(dom) {
-        let authorLabel = dom.querySelector(".book-detail a");
-        return (authorLabel === null) ? super.extractAuthor(dom) : authorLabel.textContent;
+        // typical implementation is find node with the author's name and return name from title
+        // Major points to note
+        //   1. Return the Author's name as a string, not a HTML element
+        //   2. If can't find Author, call the base implementation
+        let authorLabel = util.getElement(dom, "strong", e => e.textContent === "Author:");
+        return (authorLabel === null) ? super.extractAuthor(dom) : authorLabel.nextElementSibling.textContent;
     }
+    */
+
+    // language used
+    // Optional, if not provided, will default to ISO code for English "en"
+    /*
+    extractLanguage(dom) {
+        return dom.querySelector("html").getAttribute("lang");
+    }
+    */
 
     // Optional, supply if need to do special manipulation of content
     // e.g. decrypt content
@@ -70,17 +96,34 @@ class EsjParser extends Parser{
     }
     */
 
+    // Optional, supply if cover image can usually be found on inital web page
+    // Notes.
+    //   1. If cover image is first image in content section, do not implement this function
+    /*
     findCoverImageUrl(dom) {
         // Most common implementation is get first image in specified container. e.g.
-        return util.getFirstImgSrc(dom, "div.product-gallery");
-    }
-
-    // Optional, supply if need to chase hyperlinks in page to get all chapter content
-    /*
-    async fetchChapter(url) {
-        return (await HttpClient.wrapFetch(url)).responseXML;
+        return util.getFirstImgSrc(dom, "div.td-ss-main-sidebar");
     }
     */
+
+    // Optional, supply if need to chase hyperlinks in page to get all chapter content
+    async fetchChapter(url) {
+        url = url.replace('blob/master', '-/raw/master')
+        return this.createDocument(await HttpClient.fetchText(url));
+    }
+
+    createDocument(content) {
+        let doc = document.implementation.createHTMLDocument();
+
+        let div = doc.createElement("div");
+        div.innerHTML = content.split(/\r?\n/).map(function (line) {
+            return '<p>' + line + '</p>';
+        }).join('');
+        div.setAttribute("id", "gitlab");
+
+        doc.body.appendChild(div);
+        return doc;
+    }
 
     // Optional, supply if source has 100s of chapters and there's lots of
     // elements in DOM that are not included in the epub.

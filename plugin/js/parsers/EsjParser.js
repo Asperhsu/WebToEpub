@@ -15,6 +15,11 @@ class EsjParser extends Parser{
     }
 
     findContent(dom) {
+        let gitlabContent = dom.querySelector("#gitlab")
+        if (typeof(gitlabContent) != 'undefined' && gitlabContent !== null) {
+            return gitlabContent;
+        }
+
         let tiebaContent = dom.querySelector("#j_p_postlist")
         if (typeof(tiebaContent) != 'undefined' && tiebaContent !== null) {
             return tiebaContent;
@@ -78,11 +83,28 @@ class EsjParser extends Parser{
     }
 
     // Optional, supply if need to chase hyperlinks in page to get all chapter content
-    /*
     async fetchChapter(url) {
+        if (url.startsWith('https://gitlab.com')) {
+            url = url.replace('blob/master', '-/raw/master')
+            let content = await HttpClient.fetchText(url);
+            return this.createDocument(content);
+        }
+
         return (await HttpClient.wrapFetch(url)).responseXML;
     }
-    */
+
+    createDocument(content) {
+        let doc = document.implementation.createHTMLDocument();
+
+        let div = doc.createElement("div");
+        div.innerHTML = content.split(/\r?\n/).map(function (line) {
+            return '<p>' + line + '</p>';
+        }).join('');
+        div.setAttribute("id", "gitlab");
+
+        doc.body.appendChild(div);
+        return doc;
+    }
 
     // Optional, supply if source has 100s of chapters and there's lots of
     // elements in DOM that are not included in the epub.
